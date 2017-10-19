@@ -106,7 +106,7 @@ def validate_IRkernel(venv_dir):
 
     # check if this is really an IRkernel **kernel**
     import subprocess
-    ressources_dir = None
+    resources_dir = None
     try:
         print_resources = 'cat(as.character(system.file("kernelspec", package = "IRkernel")))'
         resources_dir_bytes = subprocess.check_output([r_exe_name, '--slave', '-e', print_resources])
