@@ -186,20 +186,19 @@ class EnvironmentKernelSpecManager(KernelSpecManager):
 
     def find_kernel_specs(self):
         """Returns a dict mapping kernel names to resource directories."""
-        # let real installed kernels overwrite envs with the same name:
-        # this is the same order as the get_kernel_spec way, which also prefers
-        # kernels from the jupyter dir over env kernels.
-        specs = self.find_kernel_specs_for_envs()
-        specs.update(super(EnvironmentKernelSpecManager,
-                           self).find_kernel_specs())
+        # let venv kernels override real installed kernels.
+        specs = super(EnvironmentKernelSpecManager,
+                      self).find_kernel_specs()
+        specs.update(self.find_kernel_specs_for_envs())
         return specs
 
     def get_all_specs(self):
         """Returns a dict mapping kernel names and resource directories.
         """
         # This is new in 4.1 -> https://github.com/jupyter/jupyter_client/pull/93
-        specs = self.get_all_kernel_specs_for_envs()
-        specs.update(super(EnvironmentKernelSpecManager, self).get_all_specs())
+        specs = super(EnvironmentKernelSpecManager, self).get_all_specs()
+        # FIXME: This is quite hacky, as we return KernelSpecs here instead of dicts
+        specs.update(self.get_all_kernel_specs_for_envs())
         return specs
 
     def get_kernel_spec(self, kernel_name):
@@ -207,13 +206,10 @@ class EnvironmentKernelSpecManager(KernelSpecManager):
 
         Raises :exc:`NoSuchKernel` if the given kernel name is not found.
         """
-        try:
-            return super(EnvironmentKernelSpecManager,
-                         self).get_kernel_spec(kernel_name)
-        except (NoSuchKernel, FileNotFoundError):
-            venv_kernel_name = kernel_name.lower()
-            specs = self.get_all_kernel_specs_for_envs()
-            if venv_kernel_name in specs:
-                return specs[venv_kernel_name]
-            else:
-                raise NoSuchKernel(kernel_name)
+        venv_kernel_name = kernel_name.lower()
+        specs = self.get_all_kernel_specs_for_envs()
+        if venv_kernel_name in specs:
+            return specs[venv_kernel_name]
+        # Fallback to super
+        return super(EnvironmentKernelSpecManager,
+                     self).get_kernel_spec(kernel_name)
