@@ -84,7 +84,7 @@ def validate_IPykernel(venv_dir):
     # check if this is really an ipython **kernel**
     import subprocess
     try:
-        subprocess.check_call([python_exe_name, '-c', '"import ipykernel"'])
+        subprocess.check_call([python_exe_name, '-c', '"import ipykernel"'], stderr=subprocess.DEVNULL)
     except:
         # not installed? -> not useable in any case...
         return [], None, None
