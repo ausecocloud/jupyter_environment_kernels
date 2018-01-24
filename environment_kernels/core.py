@@ -173,43 +173,40 @@ class EnvironmentKernelSpecManager(KernelSpecManager):
         self._env_data_cache = env_data
         return env_data
 
-    def find_kernel_specs_for_envs(self):
-        """Returns a dict mapping kernel names to resource directories."""
-        data = self._get_env_data()
-        return {name: data[name][0] for name in data}
-
     def get_all_kernel_specs_for_envs(self):
-        """Returns the dict of name -> kernel_spec for all environments"""
-
+        """Returns the dict of name -> {'resource_dir', kernel_spec} for all environments"""
         data = self._get_env_data()
-        return {name: data[name][1] for name in data}
-
-    def find_kernel_specs(self):
-        """Returns a dict mapping kernel names to resource directories."""
-        # let venv kernels override real installed kernels.
-        specs = super(EnvironmentKernelSpecManager,
-                      self).find_kernel_specs()
-        specs.update(self.find_kernel_specs_for_envs())
-        return specs
+        return {name: {'resource_dir': data[name][0],
+                       'spec': data[name][1]} for name in data}
 
     def get_all_specs(self):
-        """Returns a dict mapping kernel names and resource directories.
+        """Returns a dict mapping kernel names and resource directories and spec dicts.
         """
         # This is new in 4.1 -> https://github.com/jupyter/jupyter_client/pull/93
         specs = super(EnvironmentKernelSpecManager, self).get_all_specs()
-        # FIXME: This is quite hacky, as we return KernelSpecs here instead of dicts
+        # override with our own discovered kernels
         specs.update(self.get_all_kernel_specs_for_envs())
+        specs.update({
+            name: {
+                'resource_dir': data['resource_dir'],
+                'spec': data['spec'].to_dict()
+            } for (name, data) in self.get_all_kernel_specs_for_envs().items()
+        })
         return specs
 
     def get_kernel_spec(self, kernel_name):
         """Returns a :class:`KernelSpec` instance for the given kernel_name.
 
         Raises :exc:`NoSuchKernel` if the given kernel name is not found.
+
+        TODO: other option ... we should probably override _get_kernel_spec_by_name
+                               to return our custom env kernelspec, which allows us to
+                               lazy load environment see env_kernelspec.py:33
         """
         venv_kernel_name = kernel_name.lower()
         specs = self.get_all_kernel_specs_for_envs()
         if venv_kernel_name in specs:
-            return specs[venv_kernel_name]
+            return specs[venv_kernel_name]['spec']
         # Fallback to super
         return super(EnvironmentKernelSpecManager,
                      self).get_kernel_spec(kernel_name)
